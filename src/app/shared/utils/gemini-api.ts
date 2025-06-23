@@ -42,6 +42,7 @@ export class GeminiApi implements IGeminiApi {
     const json = await response.json();
     console.log('Gemini API response:', json);
     return json.content.parts[0].text;
+    // return json.actions.state_delta.validation_report;
   }
 }
 
