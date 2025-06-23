@@ -39,10 +39,76 @@ export class GeminiApi implements IGeminiApi {
         'Content-Type': 'application/json',
       },
     });
-    const json = await response.json();
-    console.log('Gemini API response:', json);
-    return json.content.parts[0].text;
-    // return json.actions.state_delta.validation_report;
+
+    // Assume the backend streams NDJSON events, one per line
+    const reader = response.body?.getReader();
+    let decoder = new TextDecoder();
+    let fullResponseText = '';
+    let finalText = '';
+    let done = false;
+    let streamStarted = false;
+    let finalEvent: any = {};
+
+    console.log('[GeminiApi] Starting event stream read...');
+    while (reader && !done) {
+      streamStarted = true;
+      const { value, done: streamDone } = await reader.read();
+      if (value) {
+        const chunk = decoder.decode(value, { stream: true });
+        console.log('[GeminiApi] Received chunk:', chunk);
+        // Split in case multiple events per chunk
+        for (const line of chunk.split('\n')) {
+          if (!line.trim()) continue;
+          let event;
+          try {
+            event = JSON.parse(line);
+            console.log('[GeminiApi] Parsed event:', event);
+            finalEvent = event;
+          } catch {
+            console.warn('[GeminiApi] Failed to parse event line:', line);
+            continue;
+          }
+          // Accumulate streaming text if present
+          if (
+            event.partial &&
+            event.content &&
+            event.content.parts &&
+            event.content.parts[0].text
+          ) {
+            fullResponseText += event.content.parts[0].text;
+            console.log('[GeminiApi] Accumulated text:', fullResponseText);
+          }
+          // Check if it's a final, displayable event
+          if (event.is_final_response || (typeof event.is_final_response === 'function' && event.is_final_response())) {
+            if (
+              event.content &&
+              event.content.parts &&
+              event.content.parts[0].text
+            ) {
+              finalText = fullResponseText + (event.content.parts[0].text || '');
+              console.log('[GeminiApi] Final response detected:', finalText);
+              done = true;
+              break;
+            }
+          }
+        }
+      }
+      if (streamDone) {
+        console.log('[GeminiApi] Stream done.');
+        break;
+      }
+    }
+    // Fallback: If no streaming occurred, try to parse as a single event
+    if (!finalText && !streamStarted && response.headers.get('content-type')?.includes('application/json')) {
+      const json = await response.json();
+      console.log('[GeminiApi] Fallback to single event JSON:', json);
+      finalText = json.content?.parts?.[0]?.text || '';
+    }
+    console.log('[GeminiApi] Returning final text:', finalText.trim());
+    const lastEventText = finalEvent.content?.parts?.[0]?.text || '';
+    // return finalText.trim();
+    console.log('[GeminiApi] Returning final event:', lastEventText);
+    return lastEventText.trim();
   }
 }
 
