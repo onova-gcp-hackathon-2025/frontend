@@ -40,6 +40,11 @@ export class GeminiApi implements IGeminiApi {
       },
     });
 
+    // https://google.github.io/adk-docs/events/
+    // https://github.com/GoogleCloudPlatform/agent-starter-pack/blob/main/src/frontends/
+    // https://cloud.google.com/vertex-ai/generative-ai/docs/reference/rest/v1/projects.locations.reasoningEngines/streamQuery?apix_params=%7B%22name%22%3A%22projects%2Fhacker2025-team-12-dev%2Flocations%2Fus-central1%2FreasoningEngines%2F5741922399129960448%22%2C%22resource%22%3A%7B%22input%22%3A%7B%22message%22%3A%22hello%22%2C%22user_id%22%3A%22benjamin.francisoud%40capgemini.com%22%7D%7D%7D
+    // https://cloud.google.com/vertex-ai/generative-ai/docs/reference/rest/v1/projects.locations.reasoningEngines/query?apix_params=%7B%22name%22%3A%22projects%2Fhacker2025-team-12-dev%2Flocations%2Fus-central1%2FreasoningEngines%2F5741922399129960448%22%2C%22resource%22%3A%7B%22input%22%3A%7B%22classMethod%22%3A%22query%22%2C%22message%22%3A%22hello%22%2C%22user_id%22%3A%22benjamin.francisoud%40capgemini.com%22%7D%7D%7D
+    
     // Assume the backend streams NDJSON events, one per line
     const reader = response.body?.getReader();
     let decoder = new TextDecoder();
